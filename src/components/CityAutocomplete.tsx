@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { Airport } from "@/lib/types";
 import type { AirportResult } from "@/data/airports";
 
@@ -131,54 +132,57 @@ export default function CityAutocomplete({
         )}
       </div>
 
-      {/* Fixed-position dropdown — escapes any stacking context */}
-      {open && results.length > 0 && dropPos && (
-        <ul
-          style={{
-            position: "fixed",
-            top: dropPos.top,
-            left: dropPos.left,
-            width: dropPos.width,
-            zIndex: 9999,
-          }}
-          className="rounded-xl border border-slate-200 bg-white shadow-xl max-h-64 overflow-y-auto"
-        >
-          {results.map((airport) => (
-            <li key={airport.iata}>
-              <button
-                type="button"
-                onMouseDown={(e) => e.preventDefault()}
-                onClick={() => select(airport)}
-                className="w-full text-left px-4 py-3 hover:bg-teal-50 transition flex items-center justify-between gap-3 border-b border-slate-100 last:border-0"
-              >
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5">
+      {/* Portal dropdown — rendered into document.body, bypasses ALL parent transforms/stacking contexts */}
+      {open && results.length > 0 && dropPos && typeof document !== "undefined" &&
+        createPortal(
+          <ul
+            style={{
+              position: "fixed",
+              top: dropPos.top,
+              left: dropPos.left,
+              width: dropPos.width,
+              zIndex: 9999,
+            }}
+            className="rounded-xl border border-slate-200 bg-white shadow-xl max-h-64 overflow-y-auto"
+          >
+            {results.map((airport) => (
+              <li key={airport.iata}>
+                <button
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => select(airport)}
+                  className="w-full text-left px-4 py-3 hover:bg-teal-50 transition flex items-center justify-between gap-3 border-b border-slate-100 last:border-0"
+                >
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      {airport.isCountryHub && (
+                        <span className="text-[10px] font-bold uppercase tracking-wide bg-teal-600 text-white rounded px-1.5 py-0.5 shrink-0">
+                          Hub
+                        </span>
+                      )}
+                      <span className="font-semibold text-slate-800 truncate">
+                        {airport.city}
+                      </span>
+                    </div>
+                    <span className="text-xs text-slate-500 truncate block">
+                      {airport.name} · {airport.country}
+                    </span>
                     {airport.isCountryHub && (
-                      <span className="text-[10px] font-bold uppercase tracking-wide bg-teal-600 text-white rounded px-1.5 py-0.5 shrink-0">
-                        Hub
+                      <span className="text-[10px] text-teal-600">
+                        Aéroport principal sélectionné automatiquement
                       </span>
                     )}
-                    <span className="font-semibold text-slate-800 truncate">
-                      {airport.city}
-                    </span>
                   </div>
-                  <span className="text-xs text-slate-500 truncate block">
-                    {airport.name} · {airport.country}
+                  <span className="shrink-0 rounded-md bg-teal-100 px-2 py-0.5 text-xs font-bold text-teal-700 font-mono">
+                    {airport.iata}
                   </span>
-                  {airport.isCountryHub && (
-                    <span className="text-[10px] text-teal-600">
-                      Aéroport principal sélectionné automatiquement
-                    </span>
-                  )}
-                </div>
-                <span className="shrink-0 rounded-md bg-teal-100 px-2 py-0.5 text-xs font-bold text-teal-700 font-mono">
-                  {airport.iata}
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
+                </button>
+              </li>
+            ))}
+          </ul>,
+          document.body
+        )
+      }
     </div>
   );
 }
