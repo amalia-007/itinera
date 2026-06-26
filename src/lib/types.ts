@@ -64,15 +64,20 @@ export type WeatherWish =
 
 export type TouristicWish = "calme" | "equilibre" | "anime" | "peu_importe";
 
+export type TripType = "aller-retour" | "aller-simple";
+export type MonthPart = "debut" | "milieu" | "fin";
+
 export interface Filters {
-  month?: number; // 1-12, mois de voyage envisagé
-  dateStart?: string; // ISO (optionnel)
-  dateEnd?: string;
-  budgetMax?: number; // budget vol max aller-retour / personne, EUR
+  month?: number; // 1-12
+  monthPart?: MonthPart;
+  tripType?: TripType;
+  budgetMax?: number; // budget vol max / personne, EUR (A/R ou aller simple selon tripType)
   weather?: WeatherWish;
   touristic?: TouristicWish;
   vibes?: Vibe[];
   travelers?: number;
+  dateStart?: string;
+  dateEnd?: string;
 }
 
 export interface GeoPoint {
@@ -83,13 +88,29 @@ export interface GeoPoint {
   lon: number;
 }
 
+// Airport from real IATA database
+export interface Airport {
+  iata: string;
+  name: string; // full airport name
+  city: string;
+  country: string;
+  lat: number;
+  lon: number;
+}
+
+// One stopover séjour chosen by the user
+export interface StopoverSejour {
+  airport?: Airport; // undefined = Itinera suggère
+  durationNights: number;
+}
+
 export interface FlightEstimate {
   roundTrip: number; // EUR / personne
   oneWay: number;
   distanceKm: number;
-  level: "estimation"; // marqueur d'honnêteté : ce n'est pas un tarif live
-  bestTimeToBuy: string; // conseil d'achat
-  cheapestMonths: number[]; // mois les moins chers pour voler
+  level: "estimation";
+  bestTimeToBuy: string;
+  cheapestMonths: number[];
 }
 
 export interface DailyBudget {
@@ -101,27 +122,47 @@ export interface DailyBudget {
 export interface RankedDestination {
   destination: Destination;
   flight: FlightEstimate;
-  weatherTempC: number; // température attendue au mois de voyage
+  weatherTempC: number;
   weatherCategory: WeatherWish;
   weatherMatch: number; // 0-1
   costPerDay: DailyBudget;
-  costVsOrigin?: number; // ratio coût de la vie destination / départ (si départ connu)
-  score: number; // pertinence globale 0-100
-  reasons: string[]; // pourquoi ça matche
-  detour?: number; // ratio de détour si proposé comme escale (1 = pile sur la route)
+  costVsOrigin?: number;
+  score: number; // 0-100
+  reasons: string[];
+  detour?: number;
 }
 
 export interface StopSuggestions {
   destination: GeoPoint;
   directDistanceKm: number;
-  requested: number; // nombre d'escales souhaitées
+  requested: number;
   candidates: RankedDestination[];
+}
+
+// One leg of a multi-stop itinerary
+export interface FlightLeg {
+  fromName: string;
+  toName: string;
+  distanceKm: number;
+  price: number; // per person, one-way
+}
+
+// A complete itinerary when stopover séjours have empty city slots
+export interface ItineraryCombination {
+  id: string;
+  stopovers: Array<{ airport: Airport; durationNights: number }>;
+  legs: FlightLeg[];
+  totalOneWayPrice: number; // all legs one-way, per person
+  totalRoundTripPrice: number; // includes return leg, per person
 }
 
 export interface DiscoverRequest {
   originQuery: string;
+  originAirport?: Airport;
   destinationQuery?: string;
-  stops?: number;
+  destinationAirport?: Airport;
+  stopoversSejour?: StopoverSejour[];
+  stops?: number; // legacy field
   filters: Filters;
 }
 
@@ -130,5 +171,6 @@ export interface DiscoverResponse {
   originCostIndex?: number;
   results: RankedDestination[];
   stops?: StopSuggestions;
+  combinations?: ItineraryCombination[]; // when stopovers have empty slots
   generatedAt: string;
 }

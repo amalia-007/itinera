@@ -7,7 +7,12 @@ import DealsGuide from "@/components/DealsGuide";
 import Flag from "@/components/Flag";
 import { discover } from "@/lib/api";
 import { euro } from "@/lib/format";
-import type { DiscoverRequest, DiscoverResponse } from "@/lib/types";
+import type {
+  DiscoverRequest,
+  DiscoverResponse,
+  ItineraryCombination,
+  TripType,
+} from "@/lib/types";
 
 type SortKey = "score" | "price" | "cost";
 
@@ -43,26 +48,33 @@ export default function Home() {
     }
   }
 
+  const tripType: TripType = lastReq?.filters.tripType ?? "aller-retour";
+  const month = lastReq?.filters.month;
+  const travelers = lastReq?.filters.travelers ?? 1;
+
   const sorted = useMemo(() => {
     if (!data) return [];
     const arr = [...data.results];
-    if (sort === "price")
-      arr.sort((a, b) => a.flight.roundTrip - b.flight.roundTrip);
-    else if (sort === "cost")
+    if (sort === "price") {
+      arr.sort((a, b) =>
+        tripType === "aller-simple"
+          ? a.flight.oneWay - b.flight.oneWay
+          : a.flight.roundTrip - b.flight.roundTrip
+      );
+    } else if (sort === "cost") {
       arr.sort((a, b) => a.costPerDay.mid - b.costPerDay.mid);
+    }
     return arr;
-  }, [data, sort]);
+  }, [data, sort, tripType]);
 
-  const cheapestFlight = useMemo(
-    () =>
-      data && data.results.length
-        ? Math.min(...data.results.map((r) => r.flight.roundTrip))
-        : null,
-    [data]
-  );
-
-  const month = lastReq?.filters.month;
-  const travelers = lastReq?.filters.travelers;
+  const cheapestFlight = useMemo(() => {
+    if (!data?.results.length) return null;
+    return Math.min(
+      ...data.results.map((r) =>
+        tripType === "aller-simple" ? r.flight.oneWay : r.flight.roundTrip
+      )
+    );
+  }, [data, tripType]);
 
   return (
     <main className="flex-1">
@@ -85,91 +97,94 @@ export default function Home() {
       </header>
 
       <div className="mx-auto max-w-5xl px-5">
-        {/* Search — relative z-10 so the card floats ABOVE the relatively
-            positioned hero (otherwise the hero paints over its top edge). */}
         <div className="relative z-10 -mt-8 sm:-mt-10">
           <SearchForm onSearch={runSearch} loading={loading} />
         </div>
 
-        {/* Honesty banner */}
         <p className="mt-4 text-center text-xs text-slate-400">
           Géolocalisation &amp; saisons : données réelles (Open-Meteo). Prix de
           vol : estimations calibrées sur la distance — pas des tarifs live.
         </p>
 
-        {/* Error */}
         {error && (
           <div className="mt-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
             {error}
           </div>
         )}
 
-        {/* Loading skeleton */}
         {loading && (
           <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
-              <div
-                key={i}
-                className="h-72 animate-pulse rounded-2xl bg-slate-200/60"
-              />
+              <div key={i} className="h-72 animate-pulse rounded-2xl bg-slate-200/60" />
             ))}
           </div>
         )}
 
-        {/* Results */}
         {!loading && data && (
-          <section id="results" className="mt-10 scroll-mt-6">
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <h2 className="text-2xl font-bold text-slate-900">
-                  {sorted.length} destination{sorted.length > 1 ? "s" : ""} depuis{" "}
-                  <span className="inline-flex items-center gap-2 text-teal-600">
-                    <Flag cc={data.origin.cc} /> {data.origin.name}
-                  </span>
-                </h2>
-                {cheapestFlight !== null && (
-                  <p className="mt-1 text-sm text-slate-500">
-                    À partir de{" "}
-                    <span className="font-semibold text-slate-700">
-                      {euro(cheapestFlight)}
-                    </span>{" "}
-                    le vol A/R estimé
-                    {data.originCostIndex
-                      ? " · coût de la vie comparé à votre départ"
-                      : ""}
-                    .
-                  </p>
-                )}
+          <section id="results" className="mt-10 scroll-mt-6 space-y-14">
+            {/* Destination results */}
+            <div>
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold text-slate-900">
+                    {sorted.length} destination{sorted.length > 1 ? "s" : ""} depuis{" "}
+                    <span className="inline-flex items-center gap-2 text-teal-600">
+                      <Flag cc={data.origin.cc} /> {data.origin.name}
+                    </span>
+                  </h2>
+                  {cheapestFlight !== null && (
+                    <p className="mt-1 text-sm text-slate-500">
+                      À partir de{" "}
+                      <span className="font-semibold text-slate-700">
+                        {euro(cheapestFlight)}
+                      </span>{" "}
+                      {tripType === "aller-simple" ? "l'aller simple estimé" : "le vol A/R estimé"}
+                      {" "}· par personne
+                      {data.originCostIndex ? " · coût de la vie comparé à votre départ" : ""}
+                      .
+                    </p>
+                  )}
+                </div>
+                <SortToggle sort={sort} onChange={setSort} />
               </div>
-              <SortToggle sort={sort} onChange={setSort} />
+
+              <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                {sorted.map((r, i) => (
+                  <ResultCard
+                    key={r.destination.id}
+                    rank={r}
+                    index={i}
+                    month={month}
+                    originName={data.origin.name}
+                    travelers={travelers}
+                    tripType={tripType}
+                  />
+                ))}
+              </div>
             </div>
 
-            <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-              {sorted.map((r, i) => (
-                <ResultCard
-                  key={r.destination.id}
-                  rank={r}
-                  index={i}
-                  month={month}
-                  originName={data.origin.name}
-                  travelers={travelers}
-                />
-              ))}
-            </div>
+            {/* Itinerary combinations — when stopovers have empty slots */}
+            {data.combinations && data.combinations.length > 0 && (
+              <CombinationsSection
+                combinations={data.combinations}
+                originName={data.origin.name}
+                destName={lastReq?.destinationQuery ?? "destination"}
+                tripType={tripType}
+                travelers={travelers}
+              />
+            )}
 
-            {/* Stops */}
-            {data.stops && data.stops.candidates.length > 0 && (
-              <div className="mt-12">
+            {/* Legacy stops section */}
+            {data.stops && data.stops.candidates.length > 0 && !data.combinations && (
+              <div>
                 <h2 className="flex flex-wrap items-center gap-2 text-2xl font-bold text-slate-900">
                   Escales possibles vers <Flag cc={data.stops.destination.cc} />
                   {data.stops.destination.name}
                 </h2>
                 <p className="mt-1 text-sm text-slate-500">
-                  Vous vouliez {data.stops.requested} escale
-                  {data.stops.requested > 1 ? "s" : ""} — voici les meilleures
-                  villes « sur la route » (
-                  {data.stops.directDistanceKm.toLocaleString("fr-FR")} km en
-                  direct), classées par détour minimal.
+                  Meilleures villes sur la route (
+                  {data.stops.directDistanceKm.toLocaleString("fr-FR")} km en direct),
+                  classées par détour minimal.
                 </p>
                 <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
                   {data.stops.candidates.map((r, i) => (
@@ -180,6 +195,7 @@ export default function Home() {
                       month={month}
                       originName={data.origin.name}
                       travelers={travelers}
+                      tripType={tripType}
                     />
                   ))}
                 </div>
@@ -188,17 +204,12 @@ export default function Home() {
           </section>
         )}
 
-        {/* Empty state hint */}
         {!loading && !data && !error && <EmptyHint />}
 
-        {/* Deals guide — always available */}
         <DealsGuide />
-
-        {/* Roadmap teaser */}
         <RoadmapTeaser />
       </div>
 
-      {/* Footer */}
       <footer className="mt-16 border-t border-slate-200 bg-white">
         <div className="mx-auto max-w-5xl px-5 py-8 text-sm text-slate-500">
           <p className="font-semibold text-slate-700">Itinera — MVP découverte</p>
@@ -212,6 +223,159 @@ export default function Home() {
     </main>
   );
 }
+
+// ─── Combinations Section ────────────────────────────────────────────────────
+
+function CombinationsSection({
+  combinations,
+  originName,
+  destName,
+  tripType,
+  travelers,
+}: {
+  combinations: ItineraryCombination[];
+  originName: string;
+  destName: string;
+  tripType: TripType;
+  travelers: number;
+}) {
+  const [expanded, setExpanded] = useState<string | null>(null);
+  const isOneWay = tripType === "aller-simple";
+
+  return (
+    <div>
+      <h2 className="text-2xl font-bold text-slate-900">
+        {combinations.length} itinéraire{combinations.length > 1 ? "s" : ""} suggérés
+      </h2>
+      <p className="mt-1 text-sm text-slate-500">
+        {originName} → escales séjours → {destName} — triés par prix total{" "}
+        {isOneWay ? "aller simple" : "A/R"}, par personne.{" "}
+        {travelers > 1 && (
+          <span className="font-medium text-slate-600">
+            × {travelers} voyageurs = prix total ci-dessous.
+          </span>
+        )}
+      </p>
+
+      <div className="mt-6 space-y-3">
+        {combinations.map((combo) => {
+          const pricePerPerson = isOneWay
+            ? combo.totalOneWayPrice
+            : combo.totalRoundTripPrice;
+          const totalPrice = pricePerPerson * travelers;
+          const isOpen = expanded === combo.id;
+
+          return (
+            <div
+              key={combo.id}
+              className="rounded-2xl border border-slate-200 bg-white overflow-hidden"
+            >
+              {/* Summary row */}
+              <button
+                type="button"
+                onClick={() => setExpanded(isOpen ? null : combo.id)}
+                className="w-full flex items-center justify-between gap-4 px-5 py-4 text-left hover:bg-slate-50 transition"
+              >
+                <div className="flex items-center gap-2 flex-wrap min-w-0">
+                  <span className="text-sm font-medium text-slate-500">{originName}</span>
+                  {combo.stopovers.map((s, i) => (
+                    <span key={i} className="flex items-center gap-1">
+                      <span className="text-slate-300">→</span>
+                      <span className="font-semibold text-slate-800">{s.airport.city}</span>
+                      <span className="text-xs text-slate-400">
+                        ({s.durationNights}n)
+                      </span>
+                    </span>
+                  ))}
+                  <span className="text-slate-300">→</span>
+                  <span className="text-sm font-medium text-slate-500">{destName}</span>
+                </div>
+
+                <div className="shrink-0 text-right">
+                  <p className="text-lg font-bold text-teal-600">
+                    {euro(pricePerPerson)}
+                    <span className="text-xs font-normal text-slate-400">/pers.</span>
+                  </p>
+                  {travelers > 1 && (
+                    <p className="text-xs text-slate-500">{euro(totalPrice)} total</p>
+                  )}
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    {isOneWay ? "aller simple" : "A/R"} · {isOpen ? "▲" : "▼"}
+                  </p>
+                </div>
+              </button>
+
+              {/* Expanded leg detail */}
+              {isOpen && (
+                <div className="border-t border-slate-100 px-5 py-4 bg-slate-50/60">
+                  <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">
+                    Détail des vols (estimations)
+                  </p>
+                  <div className="space-y-2">
+                    {combo.legs.map((leg, i) => (
+                      <div
+                        key={i}
+                        className="flex items-center justify-between gap-3 text-sm"
+                      >
+                        <span className="text-slate-700">
+                          ✈️ {leg.fromName} → {leg.toName}
+                          <span className="text-xs text-slate-400 ml-1">
+                            ({leg.distanceKm.toLocaleString("fr-FR")} km)
+                          </span>
+                        </span>
+                        <span className="font-semibold text-slate-800 shrink-0">
+                          {euro(leg.price)}
+                        </span>
+                      </div>
+                    ))}
+                    {!isOneWay && (
+                      <div className="flex items-center justify-between gap-3 text-sm border-t border-slate-200 pt-2 mt-2">
+                        <span className="text-slate-500">↩️ Retour {destName} → {originName}</span>
+                        <span className="font-semibold text-slate-600">
+                          {euro(combo.totalRoundTripPrice - combo.totalOneWayPrice)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-3 pt-3 border-t border-slate-200 flex justify-between font-semibold text-slate-800">
+                    <span>Total par personne</span>
+                    <span className="text-teal-600">{euro(pricePerPerson)}</span>
+                  </div>
+                  {travelers > 1 && (
+                    <div className="flex justify-between text-sm text-slate-500 mt-1">
+                      <span>Total × {travelers} voyageurs</span>
+                      <span>{euro(totalPrice)}</span>
+                    </div>
+                  )}
+
+                  {/* Stopover stays */}
+                  <div className="mt-4 pt-3 border-t border-slate-200">
+                    <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">
+                      Séjours inclus
+                    </p>
+                    <div className="flex flex-wrap gap-2">
+                      {combo.stopovers.map((s, i) => (
+                        <span
+                          key={i}
+                          className="rounded-full bg-teal-100 text-teal-700 text-xs px-3 py-1 font-medium"
+                        >
+                          {s.airport.city} · {s.durationNights} nuit{s.durationNights > 1 ? "s" : ""}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ─── Sort toggle ─────────────────────────────────────────────────────────────
 
 function SortToggle({
   sort,
@@ -252,8 +416,8 @@ function EmptyHint() {
         Indiquez votre ville de départ pour commencer.
       </p>
       <p className="mx-auto mt-1 max-w-md text-sm text-slate-500">
-        Laissez la ville d&apos;arrivée vide pour découvrir des destinations qui
-        collent à vos envies — ou renseignez-la pour planifier des escales.
+        Laissez la ville d&apos;arrivée vide pour explorer des destinations — ou
+        renseignez-la pour planifier des escales séjours.
       </p>
     </div>
   );

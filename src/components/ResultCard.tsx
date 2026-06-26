@@ -11,6 +11,7 @@ interface Props {
   month?: number;
   originName?: string;
   travelers?: number;
+  tripType?: import("@/lib/types").TripType;
 }
 
 export default function ResultCard({
@@ -19,6 +20,7 @@ export default function ResultCard({
   month,
   originName,
   travelers,
+  tripType = "aller-retour",
 }: Props) {
   const { destination: d, flight, costPerDay, costVsOrigin } = rank;
 
@@ -58,16 +60,20 @@ export default function ResultCard({
         />
         <div className="rounded-xl bg-slate-50 p-3">
           <div className="flex items-center gap-1.5">
-            <span className="text-xs font-medium text-slate-500">Vol A/R</span>
+            <span className="text-xs font-medium text-slate-500">
+              {tripType === "aller-simple" ? "Vol aller simple" : "Vol A/R"}
+            </span>
             <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-700">
               estim.
             </span>
           </div>
           <p className="text-lg font-bold text-slate-900">
-            {euro(flight.roundTrip)}
+            {euro(tripType === "aller-simple" ? flight.oneWay : flight.roundTrip)}
           </p>
           <p className="text-xs text-slate-500">
-            {flight.distanceKm.toLocaleString("fr-FR")} km · aller {euro(flight.oneWay)}
+            {flight.distanceKm.toLocaleString("fr-FR")} km
+            {tripType === "aller-retour" && ` · aller ${euro(flight.oneWay)}`}
+            {" "}· par personne
           </p>
         </div>
       </div>
