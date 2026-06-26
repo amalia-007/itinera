@@ -59,7 +59,7 @@ export default function SearchForm({ onSearch, loading }: Props) {
   const [monthPart, setMonthPart] = useState<MonthPart | "">("");
   const [tripType, setTripType] = useState<TripType>("aller-retour");
   const [budgetMax, setBudgetMax] = useState<number | "">("");
-  const [weather, setWeather] = useState<WeatherWish>("peu_importe");
+  const [weathers, setWeathers] = useState<WeatherWish[]>([]);
   const [touristic, setTouristic] = useState<TouristicWish>("peu_importe");
   const [vibes, setVibes] = useState<Vibe[]>([]);
   const [travelers, setTravelers] = useState(1);
@@ -114,7 +114,7 @@ export default function SearchForm({ onSearch, loading }: Props) {
         monthPart: month !== "" && monthPart !== "" ? monthPart : undefined,
         tripType,
         budgetMax: budgetMax === "" ? undefined : budgetMax,
-        weather,
+        weather: weathers.length ? weathers : undefined,
         touristic,
         vibes: vibes.length ? vibes : undefined,
         travelers,
@@ -347,13 +347,27 @@ export default function SearchForm({ onSearch, loading }: Props) {
         </div>
       </div>
 
-      {/* Weather */}
-      <Group label="Météo souhaitée sur place">
+      {/* Weather — multi-select */}
+      <Group label="Météo souhaitée sur place (plusieurs possibles)">
         {WEATHER_OPTIONS.map((o) => (
           <Chip
             key={o.value}
-            active={weather === o.value}
-            onClick={() => setWeather(o.value)}
+            active={
+              o.value === "peu_importe"
+                ? weathers.length === 0
+                : weathers.includes(o.value)
+            }
+            onClick={() => {
+              if (o.value === "peu_importe") {
+                setWeathers([]);
+              } else {
+                setWeathers((prev) =>
+                  prev.includes(o.value)
+                    ? prev.filter((w) => w !== o.value)
+                    : [...prev.filter((w) => w !== "peu_importe"), o.value]
+                );
+              }
+            }}
           >
             <span aria-hidden>{o.icon}</span> {o.label}
           </Chip>

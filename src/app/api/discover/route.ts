@@ -67,12 +67,10 @@ export async function POST(request: Request): Promise<Response> {
     (d) => d.city.toLowerCase() !== originGeo.name.toLowerCase()
   );
 
-  const results = rankDestinations(
-    originGeo,
-    candidates,
-    filters,
-    originCostIndex
-  ).slice(0, 24);
+  // Only rank free destinations when there is no fixed arrival city
+  const results = destGeo
+    ? []
+    : rankDestinations(originGeo, candidates, filters, originCostIndex).slice(0, 24);
 
   let stops: DiscoverResponse["stops"];
   let combinations: DiscoverResponse["combinations"];
@@ -172,8 +170,11 @@ function buildCombinations(
     return candidates;
   });
 
-  // Cartesian product of slots
-  const combos = cartesian(slots);
+  // Cartesian product of slots — filter out combos with duplicate cities
+  const combos = cartesian(slots).filter((combo) => {
+    const cities = combo.map((a) => a.city.toLowerCase());
+    return new Set(cities).size === cities.length;
+  });
 
   const result: ItineraryCombination[] = combos.map((combo, idx) => {
     // Build waypoints: origin → stop1 → stop2 → ... → destination

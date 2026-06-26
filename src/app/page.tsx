@@ -122,46 +122,48 @@ export default function Home() {
 
         {!loading && data && (
           <section id="results" className="mt-10 scroll-mt-6 space-y-14">
-            {/* Destination results */}
-            <div>
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-                <div>
-                  <h2 className="text-2xl font-bold text-slate-900">
-                    {sorted.length} destination{sorted.length > 1 ? "s" : ""} depuis{" "}
-                    <span className="inline-flex items-center gap-2 text-teal-600">
-                      <Flag cc={data.origin.cc} /> {data.origin.name}
-                    </span>
-                  </h2>
-                  {cheapestFlight !== null && (
-                    <p className="mt-1 text-sm text-slate-500">
-                      À partir de{" "}
-                      <span className="font-semibold text-slate-700">
-                        {euro(cheapestFlight)}
-                      </span>{" "}
-                      {tripType === "aller-simple" ? "l'aller simple estimé" : "le vol A/R estimé"}
-                      {" "}· par personne
-                      {data.originCostIndex ? " · coût de la vie comparé à votre départ" : ""}
-                      .
-                    </p>
-                  )}
+            {/* Destination results — only when no fixed arrival */}
+            {sorted.length > 0 && (
+              <div>
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold text-slate-900">
+                      {sorted.length} destination{sorted.length > 1 ? "s" : ""} depuis{" "}
+                      <span className="inline-flex items-center gap-2 text-teal-600">
+                        <Flag cc={data.origin.cc} /> {data.origin.name}
+                      </span>
+                    </h2>
+                    {cheapestFlight !== null && (
+                      <p className="mt-1 text-sm text-slate-500">
+                        À partir de{" "}
+                        <span className="font-semibold text-slate-700">
+                          {euro(cheapestFlight)}
+                        </span>{" "}
+                        {tripType === "aller-simple" ? "l'aller simple estimé" : "le vol A/R estimé"}
+                        {" "}· par personne
+                        {data.originCostIndex ? " · coût de la vie comparé à votre départ" : ""}
+                        .
+                      </p>
+                    )}
+                  </div>
+                  <SortToggle sort={sort} onChange={setSort} />
                 </div>
-                <SortToggle sort={sort} onChange={setSort} />
-              </div>
 
-              <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                {sorted.map((r, i) => (
-                  <ResultCard
-                    key={r.destination.id}
-                    rank={r}
-                    index={i}
-                    month={month}
-                    originName={data.origin.name}
-                    travelers={travelers}
-                    tripType={tripType}
-                  />
-                ))}
+                <div className="mt-6 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                  {sorted.map((r, i) => (
+                    <ResultCard
+                      key={r.destination.id}
+                      rank={r}
+                      index={i}
+                      month={month}
+                      originName={data.origin.name}
+                      travelers={travelers}
+                      tripType={tripType}
+                    />
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Itinerary combinations — when stopovers have empty slots */}
             {data.combinations && data.combinations.length > 0 && (
@@ -226,6 +228,8 @@ export default function Home() {
 
 // ─── Combinations Section ────────────────────────────────────────────────────
 
+type ComboSort = "cheapest" | "expensive";
+
 function CombinationsSection({
   combinations,
   originName,
@@ -240,25 +244,49 @@ function CombinationsSection({
   travelers: number;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [comboSort, setComboSort] = useState<ComboSort>("cheapest");
   const isOneWay = tripType === "aller-simple";
+
+  const sorted = [...combinations].sort((a, b) => {
+    const pa = isOneWay ? a.totalOneWayPrice : a.totalRoundTripPrice;
+    const pb = isOneWay ? b.totalOneWayPrice : b.totalRoundTripPrice;
+    return comboSort === "cheapest" ? pa - pb : pb - pa;
+  });
 
   return (
     <div>
       <h2 className="text-2xl font-bold text-slate-900">
         {combinations.length} itinéraire{combinations.length > 1 ? "s" : ""} suggérés
       </h2>
-      <p className="mt-1 text-sm text-slate-500">
-        {originName} → escales séjours → {destName} — triés par prix total{" "}
-        {isOneWay ? "aller simple" : "A/R"}, par personne.{" "}
-        {travelers > 1 && (
-          <span className="font-medium text-slate-600">
-            × {travelers} voyageurs = prix total ci-dessous.
-          </span>
-        )}
-      </p>
+      <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <p className="text-sm text-slate-500">
+          {originName} → escales séjours → {destName} · prix{" "}
+          {isOneWay ? "aller simple" : "A/R"}, par personne.
+          {travelers > 1 && (
+            <span className="font-medium text-slate-600">
+              {" "}× {travelers} = total ci-dessous.
+            </span>
+          )}
+        </p>
+        <div className="inline-flex rounded-xl bg-slate-100 p-1 shrink-0">
+          {(["cheapest", "expensive"] as ComboSort[]).map((s) => (
+            <button
+              key={s}
+              onClick={() => setComboSort(s)}
+              className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
+                comboSort === s
+                  ? "bg-white text-teal-700 shadow-sm"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              {s === "cheapest" ? "Prix ↑ Moins cher" : "Prix ↓ Plus cher"}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <div className="mt-6 space-y-3">
-        {combinations.map((combo) => {
+        {sorted.map((combo) => {
           const pricePerPerson = isOneWay
             ? combo.totalOneWayPrice
             : combo.totalRoundTripPrice;

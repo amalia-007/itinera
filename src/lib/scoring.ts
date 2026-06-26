@@ -71,7 +71,7 @@ export function rankDestinations(
     // Mild bias toward affordable destinations (cheaper cost of living).
     score += clamp(10 - dest.costIndex / 14, 0, 10);
 
-    const reasons = buildReasons(dest, filters, tempC, wMatch, vMatch, flight.roundTrip);
+    const reasons = buildReasons(dest, filters, tempC, wMatch, vMatch, flight.roundTrip, flight.oneWay);
 
     return {
       destination: dest,
@@ -100,7 +100,8 @@ function buildReasons(
   tempC: number,
   wMatch: number,
   vMatch: number,
-  roundTrip: number
+  roundTrip: number,
+  oneWay: number
 ): string[] {
   const reasons: string[] = [];
   const month = filters.month;
@@ -116,7 +117,8 @@ function buildReasons(
     if (matched.length) reasons.push(`Idéal pour : ${matched.join(", ")}`);
   }
 
-  if (filters.budgetMax && roundTrip <= filters.budgetMax) {
+  const flightPrice = filters.tripType === "aller-simple" ? oneWay : roundTrip;
+  if (filters.budgetMax && flightPrice <= filters.budgetMax) {
     reasons.push(`Vol estimé dans le budget`);
   }
 

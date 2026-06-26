@@ -72,7 +72,7 @@ export interface Filters {
   monthPart?: MonthPart;
   tripType?: TripType;
   budgetMax?: number; // budget vol max / personne, EUR (A/R ou aller simple selon tripType)
-  weather?: WeatherWish;
+  weather?: WeatherWish[]; // multi-select
   touristic?: TouristicWish;
   vibes?: Vibe[];
   travelers?: number;

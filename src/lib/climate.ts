@@ -34,13 +34,19 @@ export function weatherCategory(tempC: number): WeatherWish {
 // Ordered scale used to measure the "distance" between wish and reality.
 const SCALE: WeatherWish[] = ["froid", "frais", "tempere", "doux", "chaud"];
 
-/** 0 (opposite) → 1 (exact match) between a weather wish and a real temp. */
+/** 0 (opposite) → 1 (exact match). Accepts a single wish or an array. */
 export function weatherMatch(
-  wish: WeatherWish | undefined,
+  wish: WeatherWish | WeatherWish[] | undefined,
   tempC: number
 ): number {
-  if (!wish || wish === "peu_importe") return 0.6;
+  if (!wish || (Array.isArray(wish) && wish.length === 0)) return 0.6;
+  const wishes = Array.isArray(wish) ? wish : [wish];
+  if (wishes.includes("peu_importe")) return 0.6;
   const cat = weatherCategory(tempC);
-  const distance = Math.abs(SCALE.indexOf(cat) - SCALE.indexOf(wish));
-  return Math.max(0, 1 - distance * 0.3);
+  const catIdx = SCALE.indexOf(cat);
+  // Take the best match across all selected weathers
+  const best = Math.max(
+    ...wishes.map((w) => Math.max(0, 1 - Math.abs(catIdx - SCALE.indexOf(w)) * 0.3))
+  );
+  return best;
 }
