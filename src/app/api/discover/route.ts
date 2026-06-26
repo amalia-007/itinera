@@ -93,12 +93,16 @@ export async function POST(request: Request): Promise<Response> {
       const hasEmptySlots = stopoversSejour.some((s) => !s.airport);
 
       if (hasEmptySlots) {
-        combinations = buildCombinations(
-          originGeo,
-          destGeo,
-          stopoversSejour,
-          filters.month
-        );
+        let combos = buildCombinations(originGeo, destGeo, stopoversSejour, filters.month);
+        // Filter by total budget if set
+        if (filters.budgetMax) {
+          const isOneWay = filters.tripType === "aller-simple";
+          const filtered = combos.filter((c) =>
+            (isOneWay ? c.totalOneWayPrice : c.totalRoundTripPrice) <= filters.budgetMax!
+          );
+          combos = filtered.length > 0 ? filtered : combos; // fallback: show all if nothing fits
+        }
+        combinations = combos;
       }
       // (if all slots have airports, prices are shown on the result cards)
     }
@@ -218,7 +222,7 @@ function buildCombinations(
     };
   });
 
-  // Sort by one-way total price
+  // Sort by total price (cheapest first)
   result.sort((a, b) => a.totalOneWayPrice - b.totalOneWayPrice);
 
   // Cap at 50 combos to keep response size sane

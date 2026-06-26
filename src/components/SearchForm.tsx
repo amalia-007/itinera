@@ -265,7 +265,7 @@ export default function SearchForm({ onSearch, loading }: Props) {
           </Field>
 
           {/* Budget */}
-          <Field label={`Budget vol max${tripType === "aller-retour" ? " A/R" : " aller simple"} — par personne (€)`}>
+          <Field label={`Budget total vols${tripType === "aller-retour" ? " A/R" : " aller simple"} — par personne (€)${stopoverCount > 0 ? " · escales incluses" : ""}`}>
             <input
               type="number"
               min={0}
