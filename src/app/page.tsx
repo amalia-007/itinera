@@ -211,7 +211,7 @@ export default function Home() {
         {!loading && !data && !error && !allFilled && <EmptyHint />}
 
         <DealsGuide />
-        <RoadmapTeaser />
+        <RoadmapTeaser destCity={data?.stops?.destination?.name ?? lastReq?.destinationQuery} />
       </div>
 
       <footer className="mt-16 border-t border-slate-200 bg-white">
@@ -466,30 +466,65 @@ function EmptyHint() {
   );
 }
 
-function RoadmapTeaser() {
+function RoadmapTeaser({ destCity }: { destCity?: string }) {
+  const city = encodeURIComponent(destCity ?? "");
   const items = [
-    { icon: "🏨", label: "Logements (filtres piscine, hostel, Airbnb…)" },
-    { icon: "🎟️", label: "Activités & bons plans avec recherche" },
-    { icon: "🧳", label: "Infos pratiques sur place" },
-    { icon: "🔌", label: "Branchement vols live (Amadeus)" },
+    {
+      icon: "🏨",
+      label: "Logements",
+      sub: "Hôtels, hostels, Airbnb…",
+      href: destCity
+        ? `https://www.booking.com/searchresults.html?ss=${city}`
+        : "https://www.booking.com",
+    },
+    {
+      icon: "🎟️",
+      label: "Activités & bons plans",
+      sub: "Visites, expériences, sorties",
+      href: destCity
+        ? `https://www.getyourguide.fr/s/?q=${city}`
+        : "https://www.getyourguide.fr",
+    },
+    {
+      icon: "🧳",
+      label: "Infos pratiques",
+      sub: "Guides, conseils, culture locale",
+      href: destCity
+        ? `https://www.tripadvisor.fr/Search?q=${city}`
+        : "https://www.tripadvisor.fr",
+    },
+    {
+      icon: "🔌",
+      label: "Vols live",
+      sub: "Prix en temps réel (bientôt)",
+      href: destCity
+        ? `https://www.skyscanner.fr/transport/vols/${city.toLowerCase()}/`
+        : "https://www.skyscanner.fr",
+    },
   ];
   return (
     <section className="mt-16 rounded-3xl bg-slate-900 p-7 text-slate-100 sm:p-9">
       <h2 className="text-xl font-bold">Prochaines étapes du voyage A → Z</h2>
       <p className="mt-1 text-sm text-slate-400">
-        Le cœur découverte est là. La suite du parcours s&apos;ajoutera dessus,
-        avec la même règle : que des données réelles ou des estimations
-        clairement annoncées.
+        {destCity
+          ? `Ressources pour préparer votre séjour à ${destCity}.`
+          : "Renseignez une destination pour obtenir des liens directs."}
       </p>
       <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {items.map((it) => (
-          <div
+          <a
             key={it.label}
-            className="rounded-2xl bg-slate-800/70 p-4 ring-1 ring-white/5"
+            href={it.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-2xl bg-slate-800/70 p-4 ring-1 ring-white/5 transition hover:bg-slate-700/80 hover:ring-teal-500/40 group"
           >
             <span className="text-2xl">{it.icon}</span>
-            <p className="mt-2 text-sm text-slate-300">{it.label}</p>
-          </div>
+            <p className="mt-2 text-sm font-semibold text-slate-200 group-hover:text-teal-300 transition">
+              {it.label}
+            </p>
+            <p className="text-xs text-slate-400 mt-0.5">{it.sub}</p>
+          </a>
         ))}
       </div>
     </section>
