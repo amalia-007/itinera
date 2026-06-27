@@ -69,10 +69,10 @@ export default function FlightOptionsPanel({
                       {" · "}{formatDuration(opt.totalDurationMin)}
                       {" · "}<span className={`font-medium ${
                         opt.airline.type === "budget" ? "text-green-600" :
-                        opt.airline.type === "premium" ? "text-purple-600" : "text-slate-600"
+                        opt.airline.type === "haut-de-gamme" ? "text-purple-600" : "text-slate-600"
                       }`}>
                         {opt.airline.type === "budget" ? "Low-cost" :
-                         opt.airline.type === "premium" ? "Premium" : "Standard"}
+                         opt.airline.type === "haut-de-gamme" ? "Haut de gamme" : "Standard"}
                       </span>
                     </p>
                   </div>

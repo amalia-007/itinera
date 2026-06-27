@@ -6,9 +6,10 @@ import { haversineKm } from "./geo";
 export interface Airline {
   iata: string;
   name: string;
-  type: "budget" | "standard" | "premium";
+  type: "budget" | "standard" | "haut-de-gamme";
   priceMultiplier: number;
-  logo: string; // emoji fallback
+  logo: string;
+  maxRangeKm?: number; // low-cost only: excluded above this distance
 }
 
 export interface FlightLeg {
@@ -34,39 +35,43 @@ export interface FlightOption {
 
 // ─── Airline database ────────────────────────────────────────────────────────
 
-const AIRLINES: Record<string, Airline> = {
-  QR: { iata: "QR", name: "Qatar Airways",       type: "premium",  priceMultiplier: 1.05, logo: "🇶🇦" },
-  EK: { iata: "EK", name: "Emirates",            type: "premium",  priceMultiplier: 1.10, logo: "🇦🇪" },
-  EY: { iata: "EY", name: "Etihad Airways",      type: "premium",  priceMultiplier: 1.00, logo: "🇦🇪" },
-  TK: { iata: "TK", name: "Turkish Airlines",    type: "standard", priceMultiplier: 0.88, logo: "🇹🇷" },
-  AF: { iata: "AF", name: "Air France",          type: "standard", priceMultiplier: 1.00, logo: "🇫🇷" },
-  LH: { iata: "LH", name: "Lufthansa",           type: "standard", priceMultiplier: 1.05, logo: "🇩🇪" },
-  BA: { iata: "BA", name: "British Airways",     type: "standard", priceMultiplier: 1.05, logo: "🇬🇧" },
-  SN: { iata: "SN", name: "Brussels Airlines",   type: "standard", priceMultiplier: 0.95, logo: "🇧🇪" },
-  IB: { iata: "IB", name: "Iberia",             type: "standard", priceMultiplier: 0.92, logo: "🇪🇸" },
-  TP: { iata: "TP", name: "TAP Air Portugal",    type: "standard", priceMultiplier: 0.90, logo: "🇵🇹" },
-  SQ: { iata: "SQ", name: "Singapore Airlines",  type: "premium",  priceMultiplier: 1.15, logo: "🇸🇬" },
-  CX: { iata: "CX", name: "Cathay Pacific",      type: "premium",  priceMultiplier: 1.08, logo: "🇭🇰" },
-  TG: { iata: "TG", name: "Thai Airways",        type: "standard", priceMultiplier: 0.95, logo: "🇹🇭" },
-  QF: { iata: "QF", name: "Qantas",             type: "premium",  priceMultiplier: 1.12, logo: "🇦🇺" },
-  ET: { iata: "ET", name: "Ethiopian Airlines",  type: "standard", priceMultiplier: 0.85, logo: "🇪🇹" },
-  AT: { iata: "AT", name: "Royal Air Maroc",     type: "standard", priceMultiplier: 0.80, logo: "🇲🇦" },
-  KQ: { iata: "KQ", name: "Kenya Airways",       type: "standard", priceMultiplier: 0.88, logo: "🇰🇪" },
-  AC: { iata: "AC", name: "Air Canada",          type: "standard", priceMultiplier: 1.00, logo: "🇨🇦" },
-  DL: { iata: "DL", name: "Delta Air Lines",     type: "standard", priceMultiplier: 1.05, logo: "🇺🇸" },
-  AA: { iata: "AA", name: "American Airlines",   type: "standard", priceMultiplier: 1.02, logo: "🇺🇸" },
-  UA: { iata: "UA", name: "United Airlines",     type: "standard", priceMultiplier: 1.00, logo: "🇺🇸" },
-  LA: { iata: "LA", name: "LATAM Airlines",      type: "standard", priceMultiplier: 0.92, logo: "🌎" },
-  G3: { iata: "G3", name: "Gol Linhas Aéreas",  type: "budget",   priceMultiplier: 0.78, logo: "🇧🇷" },
-  FR: { iata: "FR", name: "Ryanair",            type: "budget",   priceMultiplier: 0.55, logo: "🟡" },
-  U2: { iata: "U2", name: "easyJet",            type: "budget",   priceMultiplier: 0.60, logo: "🟠" },
-  VY: { iata: "VY", name: "Vueling",            type: "budget",   priceMultiplier: 0.65, logo: "🟡" },
-  HV: { iata: "HV", name: "Transavia",          type: "budget",   priceMultiplier: 0.68, logo: "🟢" },
-  W6: { iata: "W6", name: "Wizz Air",           type: "budget",   priceMultiplier: 0.58, logo: "💜" },
-  MH: { iata: "MH", name: "Malaysia Airlines",  type: "standard", priceMultiplier: 0.93, logo: "🇲🇾" },
-  GA: { iata: "GA", name: "Garuda Indonesia",   type: "standard", priceMultiplier: 0.90, logo: "🇮🇩" },
-  AI: { iata: "AI", name: "Air India",          type: "standard", priceMultiplier: 0.82, logo: "🇮🇳" },
-  RJ: { iata: "RJ", name: "Royal Jordanian",    type: "standard", priceMultiplier: 0.88, logo: "🇯🇴" },
+// "haut-de-gamme" = réputées pour le service (repas, espace, ponctualité)
+// "standard"      = compagnies classiques
+// "budget"        = low-cost, court/moyen-courrier uniquement (< 3 500 km)
+const AIRLINES: Record<string, Airline & { maxRangeKm?: number }> = {
+  QR: { iata: "QR", name: "Qatar Airways",       type: "haut-de-gamme", priceMultiplier: 1.00, logo: "🇶🇦" },
+  EK: { iata: "EK", name: "Emirates",            type: "haut-de-gamme", priceMultiplier: 1.05, logo: "🇦🇪" },
+  EY: { iata: "EY", name: "Etihad Airways",      type: "haut-de-gamme", priceMultiplier: 0.97, logo: "🇦🇪" },
+  TK: { iata: "TK", name: "Turkish Airlines",    type: "standard",      priceMultiplier: 0.82, logo: "🇹🇷" },
+  AF: { iata: "AF", name: "Air France",          type: "standard",      priceMultiplier: 0.95, logo: "🇫🇷" },
+  LH: { iata: "LH", name: "Lufthansa",           type: "standard",      priceMultiplier: 0.98, logo: "🇩🇪" },
+  BA: { iata: "BA", name: "British Airways",     type: "standard",      priceMultiplier: 0.98, logo: "🇬🇧" },
+  SN: { iata: "SN", name: "Brussels Airlines",   type: "standard",      priceMultiplier: 0.90, logo: "🇧🇪" },
+  IB: { iata: "IB", name: "Iberia",              type: "standard",      priceMultiplier: 0.88, logo: "🇪🇸" },
+  TP: { iata: "TP", name: "TAP Air Portugal",    type: "standard",      priceMultiplier: 0.85, logo: "🇵🇹" },
+  SQ: { iata: "SQ", name: "Singapore Airlines",  type: "haut-de-gamme", priceMultiplier: 1.08, logo: "🇸🇬" },
+  CX: { iata: "CX", name: "Cathay Pacific",      type: "haut-de-gamme", priceMultiplier: 1.02, logo: "🇭🇰" },
+  TG: { iata: "TG", name: "Thai Airways",        type: "standard",      priceMultiplier: 0.88, logo: "🇹🇭" },
+  QF: { iata: "QF", name: "Qantas",              type: "haut-de-gamme", priceMultiplier: 1.05, logo: "🇦🇺" },
+  ET: { iata: "ET", name: "Ethiopian Airlines",  type: "standard",      priceMultiplier: 0.80, logo: "🇪🇹" },
+  AT: { iata: "AT", name: "Royal Air Maroc",     type: "standard",      priceMultiplier: 0.75, logo: "🇲🇦" },
+  KQ: { iata: "KQ", name: "Kenya Airways",       type: "standard",      priceMultiplier: 0.82, logo: "🇰🇪" },
+  AC: { iata: "AC", name: "Air Canada",          type: "standard",      priceMultiplier: 0.95, logo: "🇨🇦" },
+  DL: { iata: "DL", name: "Delta Air Lines",     type: "standard",      priceMultiplier: 0.98, logo: "🇺🇸" },
+  AA: { iata: "AA", name: "American Airlines",   type: "standard",      priceMultiplier: 0.96, logo: "🇺🇸" },
+  UA: { iata: "UA", name: "United Airlines",     type: "standard",      priceMultiplier: 0.95, logo: "🇺🇸" },
+  LA: { iata: "LA", name: "LATAM Airlines",      type: "standard",      priceMultiplier: 0.88, logo: "🌎" },
+  MH: { iata: "MH", name: "Malaysia Airlines",  type: "standard",      priceMultiplier: 0.87, logo: "🇲🇾" },
+  GA: { iata: "GA", name: "Garuda Indonesia",    type: "standard",      priceMultiplier: 0.85, logo: "🇮🇩" },
+  AI: { iata: "AI", name: "Air India",           type: "standard",      priceMultiplier: 0.78, logo: "🇮🇳" },
+  RJ: { iata: "RJ", name: "Royal Jordanian",     type: "standard",      priceMultiplier: 0.82, logo: "🇯🇴" },
+  // Low-cost : court/moyen-courrier seulement (maxRangeKm)
+  FR: { iata: "FR", name: "Ryanair",    type: "budget", priceMultiplier: 0.52, logo: "🟡", maxRangeKm: 3500 },
+  U2: { iata: "U2", name: "easyJet",   type: "budget", priceMultiplier: 0.57, logo: "🟠", maxRangeKm: 3500 },
+  VY: { iata: "VY", name: "Vueling",   type: "budget", priceMultiplier: 0.62, logo: "🟡", maxRangeKm: 3500 },
+  HV: { iata: "HV", name: "Transavia", type: "budget", priceMultiplier: 0.65, logo: "🟢", maxRangeKm: 3500 },
+  W6: { iata: "W6", name: "Wizz Air",  type: "budget", priceMultiplier: 0.55, logo: "💜", maxRangeKm: 3500 },
+  G3: { iata: "G3", name: "Gol",       type: "budget", priceMultiplier: 0.75, logo: "🇧🇷", maxRangeKm: 5000 },
 };
 
 // ─── Region detection ─────────────────────────────────────────────────────────
@@ -138,8 +143,9 @@ function formatDuration(min: number): string {
 
 function basePriceEur(distKm: number, month?: number): number {
   const safe = Math.max(distKm, 80);
-  const raw = 40 + 0.1146 * Math.pow(safe, 0.948);
-  const seasonal = month && (month === 7 || month === 8 || month === 12) ? 1.12 : 1;
+  // Calibrated on real economy market prices (one-way equivalent)
+  const raw = (35 + 0.092 * Math.pow(safe, 0.94)) * 0.85;
+  const seasonal = month && (month === 7 || month === 8 || month === 12) ? 1.10 : 1;
   return raw * seasonal;
 }
 
@@ -240,7 +246,8 @@ export function getFlightSuggestions(input: FlightSuggestionsInput): FlightOptio
 
   const options: FlightOption[] = airlineCodes.map((code) => {
     const airline = AIRLINES[code];
-    if (!airline) return null;
+    // Exclude low-cost airlines from routes longer than their range
+    if (!airline || (airline.maxRangeKm && totalDistKm > airline.maxRangeKm)) return null;
 
     const variation = priceVariation(code + origin.iata + destination.iata);
     const base = basePriceEur(totalDistKm, month);
