@@ -22,6 +22,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [sort, setSort] = useState<SortKey>("score");
   const [lastReq, setLastReq] = useState<DiscoverRequest | null>(null);
+  const [allFilled, setAllFilled] = useState(false);
 
   async function runSearch(req: DiscoverRequest) {
     setLoading(true);
@@ -98,7 +99,7 @@ export default function Home() {
 
       <div className="mx-auto max-w-5xl px-5">
         <div className="relative z-10 -mt-8 sm:-mt-10">
-          <SearchForm onSearch={runSearch} loading={loading} />
+          <SearchForm onSearch={runSearch} loading={loading} onAllFilledChange={setAllFilled} />
         </div>
 
         <p className="mt-4 text-center text-xs text-slate-400">
@@ -207,7 +208,7 @@ export default function Home() {
           </section>
         )}
 
-        {!loading && !data && !error && <EmptyHint />}
+        {!loading && !data && !error && !allFilled && <EmptyHint />}
 
         <DealsGuide />
         <RoadmapTeaser />

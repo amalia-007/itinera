@@ -12,9 +12,8 @@ import type {
   WeatherWish,
 } from "@/lib/types";
 import { MONTHS_FR, VIBE_EMOJI, VIBE_LABELS } from "@/lib/format";
-import { googleFlightsDeepUrl, kiwiUrl, skyscannerUrl } from "@/lib/deeplinks";
-import type { FlightRoute } from "@/lib/deeplinks";
 import CityAutocomplete from "./CityAutocomplete";
+import FlightOptionsPanel from "./FlightOptionsPanel";
 
 const WEATHER_OPTIONS: { value: WeatherWish; label: string; icon: string }[] = [
   { value: "chaud", label: "Chaud", icon: "☀️" },
@@ -47,9 +46,10 @@ const OW_RATIO = 0.62;
 interface Props {
   onSearch: (req: DiscoverRequest) => void;
   loading: boolean;
+  onAllFilledChange?: (v: boolean) => void;
 }
 
-export default function SearchForm({ onSearch, loading }: Props) {
+export default function SearchForm({ onSearch, loading, onAllFilledChange }: Props) {
   const [originAirport, setOriginAirport] = useState<Airport | null>(null);
   const [destAirport, setDestAirport] = useState<Airport | null>(null);
 
@@ -78,6 +78,15 @@ export default function SearchForm({ onSearch, loading }: Props) {
       return next;
     });
   }, [stopoverCount]);
+
+  // Notify parent when all destinations are filled
+  useEffect(() => {
+    const allFilled =
+      !!originAirport &&
+      !!destAirport &&
+      (stopovers.length === 0 || stopovers.every((s) => s.airport));
+    onAllFilledChange?.(allFilled);
+  }, [originAirport, destAirport, stopovers]);
 
   // Auto-adjust budget when switching trip type
   function switchTripType(t: TripType) {
@@ -408,25 +417,15 @@ export default function SearchForm({ onSearch, loading }: Props) {
         );
       })()}
 
-      {/* "Trouver mes vols" — appears when origin + destination + all stopovers are filled */}
+      {/* Prêt à réserver — appears when all cities are filled */}
       {(() => {
         const allStopoversFilled =
           stopovers.length === 0 || stopovers.every((s) => s.airport);
         const ready = originAirport && destAirport && allStopoversFilled;
         if (!ready) return null;
 
-        const route: FlightRoute = {
-          originIata: originAirport.iata,
-          destinationIata: destAirport.iata,
-          stopovers: stopovers.map((s) => s.airport!.iata),
-          month: month === "" ? undefined : month,
-          monthPart: monthPart === "" ? undefined : monthPart,
-          travelers,
-          tripType,
-        };
-
         return (
-          <div className="rounded-2xl border-2 border-teal-200 bg-teal-50/60 p-5 space-y-3">
+          <div className="rounded-2xl border-2 border-teal-200 bg-teal-50/60 p-5 space-y-4">
             <div>
               <p className="text-sm font-bold text-teal-800">✈️ Prêt à réserver ?</p>
               <p className="text-xs text-teal-600 mt-0.5">
@@ -438,44 +437,16 @@ export default function SearchForm({ onSearch, loading }: Props) {
                 {month !== "" && ` · ${MONTHS_FR[Number(month) - 1]}${monthPart ? ` (${monthPart})` : ""}`}
               </p>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <a
-                href={skyscannerUrl(route)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-xl bg-[#0770E3] px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M21.17 2.06A13.1 13.1 0 0 0 19 1.87a13 13 0 0 0-9.46 4.07L7.5 8H4a1 1 0 0 0-.78.37L.44 11.55a1 1 0 0 0 .34 1.54l3.2 1.62.09.09 5.91 5.91.1.1 1.6 3.19a1 1 0 0 0 .71.54 1 1 0 0 0 .83-.2l3.18-2.78A1 1 0 0 0 16 21v-3.5l2.06-2a13 13 0 0 0 3.76-12.24 1 1 0 0 0-.65-.2z"/></svg>
-                Skyscanner
-              </a>
-              <a
-                href={googleFlightsDeepUrl(route)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-xl bg-white border border-slate-200 px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
-                Google Flights
-              </a>
-              <a
-                href={kiwiUrl(route)}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 rounded-xl bg-[#00B2A9] px-4 py-2.5 text-sm font-semibold text-white transition hover:opacity-90"
-              >
-                🥝 Kiwi.com
-              </a>
-            </div>
-            <p className="text-[10px] text-teal-500">
-              Ces liens ouvrent les comparateurs avec vos paramètres pré-remplis pour trouver le vrai prix du marché.
-            </p>
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full rounded-xl border border-teal-300 bg-white py-2.5 text-sm font-medium text-teal-700 transition hover:bg-teal-50 disabled:opacity-50"
-            >
-              {loading ? "Calcul en cours…" : "↺ Recalculer les itinéraires"}
-            </button>
+
+            <FlightOptionsPanel
+              origin={originAirport}
+              destination={destAirport}
+              stopovers={stopovers.map((s) => s.airport!)}
+              month={month !== "" ? Number(month) : undefined}
+              monthPart={monthPart !== "" ? monthPart : undefined}
+              travelers={travelers}
+              tripType={tripType}
+            />
           </div>
         );
       })()}
