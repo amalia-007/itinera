@@ -281,20 +281,9 @@ export default function SearchForm({ onSearch, loading }: Props) {
             />
           </Field>
 
-          {/* Travelers */}
+          {/* Travelers — local string state so user can clear and retype */}
           <Field label="Voyageurs">
-            <input
-              type="number"
-              min={1}
-              max={12}
-              value={travelers}
-              onChange={(e) => {
-                const v = parseInt(e.target.value, 10);
-                if (!isNaN(v)) setTravelers(Math.min(12, Math.max(1, v)));
-              }}
-              className={`${inputClass} [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
-              placeholder="1"
-            />
+            <TravelersInput value={travelers} onChange={setTravelers} inputClass={inputClass} />
           </Field>
         </div>
 
@@ -496,6 +485,43 @@ export default function SearchForm({ onSearch, loading }: Props) {
 
 const inputClass =
   "w-full rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-3 text-slate-800 outline-none transition focus:border-teal-400 focus:bg-white focus:ring-2 focus:ring-teal-100";
+
+function TravelersInput({
+  value,
+  onChange,
+  inputClass,
+}: {
+  value: number;
+  onChange: (n: number) => void;
+  inputClass: string;
+}) {
+  const [raw, setRaw] = useState(String(value));
+
+  // Keep raw in sync when parent changes (e.g. reset)
+  useEffect(() => setRaw(String(value)), [value]);
+
+  return (
+    <input
+      type="text"
+      inputMode="numeric"
+      value={raw}
+      onChange={(e) => {
+        const s = e.target.value.replace(/[^0-9]/g, "");
+        setRaw(s); // allow empty while typing
+        const n = parseInt(s, 10);
+        if (!isNaN(n) && n >= 1 && n <= 12) onChange(n);
+      }}
+      onBlur={() => {
+        const n = parseInt(raw, 10);
+        const clamped = isNaN(n) ? 1 : Math.min(12, Math.max(1, n));
+        onChange(clamped);
+        setRaw(String(clamped));
+      }}
+      className={inputClass}
+      placeholder="1"
+    />
+  );
+}
 
 function Field({
   label,
