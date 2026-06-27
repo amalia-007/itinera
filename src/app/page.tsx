@@ -173,6 +173,7 @@ export default function Home() {
                 destName={lastReq?.destinationQuery ?? "destination"}
                 tripType={tripType}
                 travelers={travelers}
+                onReset={() => { setData(null); window.scrollTo({ top: 0, behavior: "smooth" }); }}
               />
             )}
 
@@ -236,12 +237,14 @@ function CombinationsSection({
   destName,
   tripType,
   travelers,
+  onReset,
 }: {
   combinations: ItineraryCombination[];
   originName: string;
   destName: string;
   tripType: TripType;
   travelers: number;
+  onReset?: () => void;
 }) {
   const [expanded, setExpanded] = useState<string | null>(null);
   const [comboSort, setComboSort] = useState<ComboSort>("cheapest");
@@ -255,9 +258,20 @@ function CombinationsSection({
 
   return (
     <div>
-      <h2 className="text-2xl font-bold text-slate-900">
-        {combinations.length} itinéraire{combinations.length > 1 ? "s" : ""} suggérés
-      </h2>
+      <div className="flex items-center justify-between gap-4 mb-1">
+        <p className="text-sm font-semibold text-slate-500 uppercase tracking-wide">
+          {combinations.length} itinéraire{combinations.length > 1 ? "s" : ""} comparés
+        </p>
+        {onReset && (
+          <button
+            type="button"
+            onClick={onReset}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50"
+          >
+            ✎ Changer la recherche
+          </button>
+        )}
+      </div>
       <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="text-sm text-slate-500">
           {originName} → escales séjours → {destName} · prix{" "}

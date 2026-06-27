@@ -288,8 +288,12 @@ export default function SearchForm({ onSearch, loading }: Props) {
               min={1}
               max={12}
               value={travelers}
-              onChange={(e) => setTravelers(Math.max(1, Number(e.target.value)))}
-              className={inputClass}
+              onChange={(e) => {
+                const v = parseInt(e.target.value, 10);
+                if (!isNaN(v)) setTravelers(Math.min(12, Math.max(1, v)));
+              }}
+              className={`${inputClass} [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
+              placeholder="1"
             />
           </Field>
         </div>
@@ -398,13 +402,22 @@ export default function SearchForm({ onSearch, loading }: Props) {
         ))}
       </Group>
 
-      <button
-        type="submit"
-        disabled={loading || !originAirport}
-        className="w-full rounded-2xl bg-gradient-to-r from-teal-500 to-cyan-600 py-4 text-base font-semibold text-white shadow-lg shadow-teal-500/30 transition hover:from-teal-600 hover:to-cyan-700 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {loading ? "Recherche en cours…" : "Trouver mes destinations →"}
-      </button>
+      {/* Hide main button when all cities are filled — "Prêt à réserver" takes over */}
+      {(() => {
+        const allStopoversFilled2 =
+          stopovers.length === 0 || stopovers.every((s) => s.airport);
+        const allFilled2 = originAirport && destAirport && allStopoversFilled2;
+        if (allFilled2) return null;
+        return (
+          <button
+            type="submit"
+            disabled={loading || !originAirport}
+            className="w-full rounded-2xl bg-gradient-to-r from-teal-500 to-cyan-600 py-4 text-base font-semibold text-white shadow-lg shadow-teal-500/30 transition hover:from-teal-600 hover:to-cyan-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {loading ? "Recherche en cours…" : "Trouver mes destinations →"}
+          </button>
+        );
+      })()}
 
       {/* "Trouver mes vols" — appears when origin + destination + all stopovers are filled */}
       {(() => {
@@ -467,6 +480,13 @@ export default function SearchForm({ onSearch, loading }: Props) {
             <p className="text-[10px] text-teal-500">
               Ces liens ouvrent les comparateurs avec vos paramètres pré-remplis pour trouver le vrai prix du marché.
             </p>
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full rounded-xl border border-teal-300 bg-white py-2.5 text-sm font-medium text-teal-700 transition hover:bg-teal-50 disabled:opacity-50"
+            >
+              {loading ? "Calcul en cours…" : "↺ Recalculer les itinéraires"}
+            </button>
           </div>
         );
       })()}
